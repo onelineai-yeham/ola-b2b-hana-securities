@@ -42,7 +42,8 @@ func (d DBConfig) DSN() string {
 }
 
 func Load() (*Config, error) {
-	// Load .env file if exists (development)
+	// Load .env.local first (local development), then .env as fallback
+	_ = godotenv.Load(".env.local")
 	_ = godotenv.Load()
 
 	cfg := &Config{}
