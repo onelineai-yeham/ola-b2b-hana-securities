@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	"github.com/onelineai/hana-news-api/docs"
 	"github.com/onelineai/hana-news-api/internal/db"
 	"github.com/onelineai/hana-news-api/internal/model"
 	"github.com/onelineai/hana-news-api/internal/service"
@@ -52,9 +53,7 @@ func (h *Handler) Router() http.Handler {
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/index.html", http.StatusMovedPermanently)
 	})
-	r.Get("/docs/*", httpSwagger.Handler(
-		httpSwagger.URL("/docs/doc.json"),
-	))
+	r.Get("/docs/*", h.swaggerHandler())
 
 	r.Get("/health", h.healthCheck)
 
@@ -159,6 +158,19 @@ func (h *Handler) executeListNews(w http.ResponseWriter, r *http.Request, filter
 		return
 	}
 	h.respondJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) swaggerHandler() http.HandlerFunc {
+	handler := httpSwagger.Handler(httpSwagger.URL("/docs/doc.json"))
+	return func(w http.ResponseWriter, r *http.Request) {
+		docs.SwaggerInfo.Host = r.Host
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			docs.SwaggerInfo.Schemes = []string{"https"}
+		} else {
+			docs.SwaggerInfo.Schemes = []string{"http"}
+		}
+		handler.ServeHTTP(w, r)
+	}
 }
 
 func (h *Handler) respondJSON(w http.ResponseWriter, status int, data interface{}) {
