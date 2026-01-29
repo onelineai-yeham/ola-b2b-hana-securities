@@ -51,9 +51,9 @@
                 }
             }
         },
-        "/v1/news/{country}": {
+        "/v1/news": {
             "get": {
-                "description": "Get paginated list of translated news articles for a specific country",
+                "description": "Get paginated list of translated news articles",
                 "consumes": [
                     "application/json"
                 ],
@@ -63,105 +63,18 @@
                 "tags": [
                     "news"
                 ],
-                "summary": "List news by country",
+                "summary": "List news",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Country code (JP or CN)",
                         "name": "country",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Filter by ticker/stock code",
-                        "name": "ticker",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Start time (RFC3339 format)",
-                        "name": "from",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "End time (RFC3339 format)",
-                        "name": "to",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page (default: 20, max: 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.NewsListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/news/{country}/{exchange}": {
-            "get": {
-                "description": "Get paginated list of translated news articles for a specific country and exchange",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "news"
-                ],
-                "summary": "List news by country and exchange",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Country code (CN)",
-                        "name": "country",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Exchange code (HK, SH, SZ, BJ)",
-                        "name": "exchange",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by ticker code (without exchange suffix)",
                         "name": "ticker",
                         "in": "query"
                     },

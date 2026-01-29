@@ -65,14 +65,14 @@ paths:
       summary: Health check
       tags:
       - health
-  /v1/news/{country}:
+  /v1/news:
     get:
       consumes:
       - application/json
-      description: Get paginated list of translated news articles for a specific country
+      description: Get paginated list of translated news articles
       parameters:
       - description: Country code (JP or CN)
-        in: path
+        in: query
         name: country
         required: true
         type: string
@@ -115,66 +115,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: List news by country
-      tags:
-      - news
-  /v1/news/{country}/{exchange}:
-    get:
-      consumes:
-      - application/json
-      description: Get paginated list of translated news articles for a specific country
-        and exchange
-      parameters:
-      - description: Country code (CN)
-        in: path
-        name: country
-        required: true
-        type: string
-      - description: Exchange code (HK, SH, SZ, BJ)
-        in: path
-        name: exchange
-        required: true
-        type: string
-      - description: Filter by ticker code (without exchange suffix)
-        in: query
-        name: ticker
-        type: string
-      - description: Start time (RFC3339 format)
-        in: query
-        name: from
-        type: string
-      - description: End time (RFC3339 format)
-        in: query
-        name: to
-        type: string
-      - description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Items per page (default: 20, max: 100)'
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.NewsListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: List news by country and exchange
+      summary: List news
       tags:
       - news
 schemes:

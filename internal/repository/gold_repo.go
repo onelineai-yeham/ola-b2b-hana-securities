@@ -102,10 +102,6 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 		argIdx++
 	}
 
-	if filter.Exchange != nil {
-		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(tickers) t WHERE t LIKE '%%.%s')", *filter.Exchange))
-	}
-
 	if filter.Ticker != nil {
 		conditions = append(conditions, fmt.Sprintf("$%d = ANY(tickers)", argIdx))
 		args = append(args, *filter.Ticker)

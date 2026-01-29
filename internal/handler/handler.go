@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -60,8 +59,7 @@ func (h *Handler) Router() http.Handler {
 	r.Get("/health", h.healthCheck)
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/news/{country}", h.listNewsByCountry)
-		r.Get("/news/{country}/{exchange}", h.listNewsByCountryExchange)
+		r.Get("/news", h.listNews)
 	})
 
 	return r
@@ -84,13 +82,13 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// listNewsByCountry godoc
-// @Summary      List news by country
-// @Description  Get paginated list of translated news articles for a specific country
+// listNews godoc
+// @Summary      List news
+// @Description  Get paginated list of translated news articles
 // @Tags         news
 // @Accept       json
 // @Produce      json
-// @Param        country path      string  true   "Country code (JP or CN)"
+// @Param        country query     string  true   "Country code (JP or CN)"
 // @Param        ticker  query     string  false  "Filter by ticker/stock code"
 // @Param        from    query     string  false  "Start time (RFC3339 format)"
 // @Param        to      query     string  false  "End time (RFC3339 format)"
@@ -99,9 +97,9 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 // @Success      200     {object}  model.NewsListResponse
 // @Failure      400     {object}  map[string]string
 // @Failure      500     {object}  map[string]string
-// @Router       /v1/news/{country} [get]
-func (h *Handler) listNewsByCountry(w http.ResponseWriter, r *http.Request) {
-	country := strings.ToUpper(chi.URLParam(r, "country"))
+// @Router       /v1/news [get]
+func (h *Handler) listNews(w http.ResponseWriter, r *http.Request) {
+	country := strings.ToUpper(r.URL.Query().Get("country"))
 
 	c := model.CountryCode(country)
 	if c != model.CountryJP && c != model.CountryCN {
@@ -115,51 +113,6 @@ func (h *Handler) listNewsByCountry(w http.ResponseWriter, r *http.Request) {
 
 	if ticker := r.URL.Query().Get("ticker"); ticker != "" {
 		filter.Ticker = &ticker
-	}
-
-	h.executeListNews(w, r, filter)
-}
-
-// listNewsByCountryExchange godoc
-// @Summary      List news by country and exchange
-// @Description  Get paginated list of translated news articles for a specific country and exchange
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Param        country  path      string  true   "Country code (CN)"
-// @Param        exchange path      string  true   "Exchange code (HK, SH, SZ, BJ)"
-// @Param        ticker   query     string  false  "Filter by ticker code (without exchange suffix)"
-// @Param        from     query     string  false  "Start time (RFC3339 format)"
-// @Param        to       query     string  false  "End time (RFC3339 format)"
-// @Param        page     query     int     false  "Page number (default: 1)"
-// @Param        limit    query     int     false  "Items per page (default: 20, max: 100)"
-// @Success      200      {object}  model.NewsListResponse
-// @Failure      400      {object}  map[string]string
-// @Failure      500      {object}  map[string]string
-// @Router       /v1/news/{country}/{exchange} [get]
-func (h *Handler) listNewsByCountryExchange(w http.ResponseWriter, r *http.Request) {
-	country := strings.ToUpper(chi.URLParam(r, "country"))
-	exchange := strings.ToUpper(chi.URLParam(r, "exchange"))
-
-	if country != "CN" {
-		h.respondError(w, http.StatusBadRequest, "exchange filter only supported for CN")
-		return
-	}
-
-	validExchanges := map[string]bool{"HK": true, "SH": true, "SZ": true, "BJ": true}
-	if !validExchanges[exchange] {
-		h.respondError(w, http.StatusBadRequest, "invalid exchange, must be 'HK', 'SH', 'SZ', or 'BJ'")
-		return
-	}
-
-	filter := h.parseCommonFilters(r)
-	source := model.SourceCNWind
-	filter.Source = &source
-	filter.Exchange = &exchange
-
-	if ticker := r.URL.Query().Get("ticker"); ticker != "" {
-		fullTicker := fmt.Sprintf("%s.%s", ticker, exchange)
-		filter.Ticker = &fullTicker
 	}
 
 	h.executeListNews(w, r, filter)

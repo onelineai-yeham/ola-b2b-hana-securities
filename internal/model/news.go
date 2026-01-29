@@ -156,13 +156,12 @@ type NewsDetail struct {
 
 // NewsFilter represents query parameters for news listing
 type NewsFilter struct {
-	Source   *NewsSource
-	Exchange *string // Exchange suffix for CN news: "HK", "SH", "SZ", "BJ"
-	Ticker   *string
-	From     *time.Time
-	To       *time.Time
-	Page     int
-	Limit    int
+	Source *NewsSource
+	Ticker *string
+	From   *time.Time
+	To     *time.Time
+	Page   int
+	Limit  int
 }
 
 // Pagination represents pagination info in response
