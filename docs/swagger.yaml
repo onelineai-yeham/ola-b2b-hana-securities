@@ -1,0 +1,210 @@
+basePath: /
+definitions:
+  model.NewsDetail:
+    properties:
+      id:
+        type: string
+      keywords:
+        items:
+          type: string
+        type: array
+      model_name:
+        type: string
+      original_content:
+        type: string
+      original_headline:
+        type: string
+      provider:
+        type: string
+      published_at:
+        type: string
+      source:
+        $ref: '#/definitions/model.NewsSource'
+      tickers:
+        items:
+          type: string
+        type: array
+      topics:
+        items:
+          type: string
+        type: array
+      translated_content:
+        type: string
+      translated_headline:
+        type: string
+    type: object
+  model.NewsListItem:
+    properties:
+      headline:
+        type: string
+      id:
+        type: string
+      published_at:
+        type: string
+      source:
+        $ref: '#/definitions/model.NewsSource'
+      tickers:
+        items:
+          type: string
+        type: array
+      topics:
+        items:
+          type: string
+        type: array
+    type: object
+  model.NewsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.NewsListItem'
+        type: array
+      pagination:
+        $ref: '#/definitions/model.Pagination'
+    type: object
+  model.NewsSource:
+    enum:
+    - jp_minkabu
+    - cn_wind
+    type: string
+    x-enum-varnames:
+    - SourceJPMinkabu
+    - SourceCNWind
+  model.Pagination:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@onelineai.com
+    name: OLA B2B Team
+  description: |-
+    API server for Hana Securities translated news service.
+    Provides access to Japanese (Minkabu) and Chinese (Wind) news translated to Korean.
+  license:
+    name: Proprietary
+    url: https://onelineai.com
+  title: Hana Securities News API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Check service health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /v1/news:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of translated news articles
+      parameters:
+      - description: News source filter (jp_minkabu or cn_wind)
+        in: query
+        name: source
+        type: string
+      - description: Filter by ticker/stock code
+        in: query
+        name: ticker
+        type: string
+      - description: Start time (RFC3339 format)
+        in: query
+        name: from
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: to
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NewsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List news
+      tags:
+      - news
+  /v1/news/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information of a specific news article
+      parameters:
+      - description: News ID (e.g., jp_minkabu_12345 or cn_wind_abc123)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NewsDetail'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get news detail
+      tags:
+      - news
+schemes:
+- http
+- https
+swagger: "2.0"
