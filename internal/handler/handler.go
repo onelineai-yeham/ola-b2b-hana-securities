@@ -88,7 +88,7 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 // @Tags         news
 // @Accept       json
 // @Produce      json
-// @Param        country query     string  true   "Country code (JP or CN)"
+// @Param        country query     string  false  "Country code (JP or CN)"
 // @Param        ticker  query     string  false  "Filter by ticker/stock code"
 // @Param        from    query     string  false  "Start time (RFC3339 format)"
 // @Param        to      query     string  false  "End time (RFC3339 format)"
@@ -99,17 +99,17 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 // @Failure      500     {object}  map[string]string
 // @Router       /v1/news [get]
 func (h *Handler) listNews(w http.ResponseWriter, r *http.Request) {
-	country := strings.ToUpper(r.URL.Query().Get("country"))
-
-	c := model.CountryCode(country)
-	if c != model.CountryJP && c != model.CountryCN {
-		h.respondError(w, http.StatusBadRequest, "invalid country, must be 'JP' or 'CN'")
-		return
-	}
-
 	filter := h.parseCommonFilters(r)
-	source := c.ToNewsSource()
-	filter.Source = &source
+
+	if country := strings.ToUpper(r.URL.Query().Get("country")); country != "" {
+		c := model.CountryCode(country)
+		if c != model.CountryJP && c != model.CountryCN {
+			h.respondError(w, http.StatusBadRequest, "invalid country, must be 'JP' or 'CN'")
+			return
+		}
+		source := c.ToNewsSource()
+		filter.Source = &source
+	}
 
 	if ticker := r.URL.Query().Get("ticker"); ticker != "" {
 		filter.Ticker = &ticker

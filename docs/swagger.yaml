@@ -74,7 +74,6 @@ paths:
       - description: Country code (JP or CN)
         in: query
         name: country
-        required: true
         type: string
       - description: Filter by ticker/stock code
         in: query

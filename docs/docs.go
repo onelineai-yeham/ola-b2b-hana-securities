@@ -72,8 +72,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Country code (JP or CN)",
                         "name": "country",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "string",
