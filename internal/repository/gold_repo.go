@@ -53,10 +53,10 @@ func (r *GoldRepository) UpsertNews(ctx context.Context, news []*model.Translate
 	for _, n := range news {
 		batch.Queue(`
 			INSERT INTO gold.translated_news 
-				(source, source_news_id, original_headline, original_content,
+				(id, source, source_news_id, original_headline, original_content,
 				 translated_headline, translated_content, tickers, topics, keywords,
 				 provider, published_at, model_name, source_created_at, source_updated_at, synced_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
 			ON CONFLICT (source, source_news_id) DO UPDATE SET
 				original_headline = EXCLUDED.original_headline,
 				original_content = EXCLUDED.original_content,
@@ -136,7 +136,7 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 	offset := (filter.Page - 1) * filter.Limit
 	dataArgs := append(args, filter.Limit, offset)
 	dataQuery := fmt.Sprintf(`
-		SELECT translated_headline, translated_content, published_at, provider
+		SELECT id, translated_headline, translated_content, published_at, provider
 		FROM gold.translated_news
 		%s
 		ORDER BY published_at DESC
@@ -151,14 +151,16 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 
 	var items []model.NewsListItem
 	for rows.Next() {
+		var id string
 		var headline string
 		var content *string
 		var publishedAt time.Time
 		var provider *string
-		if err := rows.Scan(&headline, &content, &publishedAt, &provider); err != nil {
+		if err := rows.Scan(&id, &headline, &content, &publishedAt, &provider); err != nil {
 			return nil, 0, err
 		}
 		items = append(items, model.NewsListItem{
+			ID:        id,
 			Date:      publishedAt.Format("2006.01.02"),
 			Time:      publishedAt.Format("15:04"),
 			Publisher: provider,
@@ -170,42 +172,19 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 	return items, total, rows.Err()
 }
 
-// GetNewsDetail returns detailed news by ID
+// GetNewsDetail returns detailed news by UUID
 func (r *GoldRepository) GetNewsDetail(ctx context.Context, id string) (*model.NewsDetail, error) {
-	// Parse ID: format is "source_sourceNewsId"
-	parts := strings.SplitN(id, "_", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid news id format: %s", id)
-	}
-
-	source := parts[0]
-	// Handle cases like "jp_minkabu_xxx" where source itself has underscore
-	if source == "jp" && len(parts[1]) > 0 {
-		subParts := strings.SplitN(parts[1], "_", 2)
-		if len(subParts) == 2 && subParts[0] == "minkabu" {
-			source = "jp_minkabu"
-			parts[1] = subParts[1]
-		}
-	} else if source == "cn" && len(parts[1]) > 0 {
-		subParts := strings.SplitN(parts[1], "_", 2)
-		if len(subParts) == 2 && subParts[0] == "wind" {
-			source = "cn_wind"
-			parts[1] = subParts[1]
-		}
-	}
-	sourceNewsID := parts[1]
-
 	var detail model.NewsDetail
 	var sourceStr string
 
 	err := r.pool.QueryRow(ctx, `
-		SELECT source, source_news_id, original_headline, original_content,
+		SELECT id, source, original_headline, original_content,
 		       translated_headline, translated_content, tickers, topics, keywords,
 		       published_at, provider, model_name
 		FROM gold.translated_news
-		WHERE source = $1 AND source_news_id = $2
-	`, source, sourceNewsID).Scan(
-		&sourceStr, &detail.ID, &detail.OriginalHeadline, &detail.OriginalContent,
+		WHERE id = $1
+	`, id).Scan(
+		&detail.ID, &sourceStr, &detail.OriginalHeadline, &detail.OriginalContent,
 		&detail.TranslatedHeadline, &detail.TranslatedContent, &detail.Tickers, &detail.Topics, &detail.Keywords,
 		&detail.PublishedAt, &detail.Provider, &detail.ModelName,
 	)
@@ -218,7 +197,6 @@ func (r *GoldRepository) GetNewsDetail(ctx context.Context, id string) (*model.N
 	}
 
 	detail.Source = model.NewsSource(sourceStr)
-	detail.ID = fmt.Sprintf("%s_%s", sourceStr, detail.ID)
 
 	return &detail, nil
 }

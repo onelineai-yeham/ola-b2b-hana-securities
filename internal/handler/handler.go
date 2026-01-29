@@ -59,6 +59,7 @@ func (h *Handler) Router() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/news", h.listNews)
+		r.Get("/news/{id}", h.getNewsDetail)
 	})
 
 	return r
@@ -158,6 +159,40 @@ func (h *Handler) executeListNews(w http.ResponseWriter, r *http.Request, filter
 		return
 	}
 	h.respondJSON(w, http.StatusOK, resp)
+}
+
+// getNewsDetail godoc
+// @Summary      Get news detail
+// @Description  Get detailed news article by UUID
+// @Tags         news
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "News UUID"
+// @Success      200  {object}  model.NewsDetail
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /v1/news/{id} [get]
+func (h *Handler) getNewsDetail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.respondError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	detail, err := h.newsService.GetNewsDetail(r.Context(), id)
+	if err != nil {
+		h.logger.Error("failed to get news detail", "error", err, "id", id)
+		h.respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	if detail == nil {
+		h.respondError(w, http.StatusNotFound, "news not found")
+		return
+	}
+
+	h.respondJSON(w, http.StatusOK, detail)
 }
 
 func (h *Handler) swaggerHandler() http.HandlerFunc {

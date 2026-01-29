@@ -32,7 +32,7 @@ func (c CountryCode) ToNewsSource() NewsSource {
 
 // TranslatedNews represents a unified translated news record (Gold schema)
 type TranslatedNews struct {
-	ID                 int64      `json:"id"`
+	ID                 string     `json:"id"`
 	Source             NewsSource `json:"source"`
 	SourceNewsID       string     `json:"source_news_id"`
 	OriginalHeadline   string     `json:"original_headline"`
@@ -131,6 +131,7 @@ func (n *CNWindNews) ToTranslatedNews() *TranslatedNews {
 
 // NewsListItem is a unified news item for API response
 type NewsListItem struct {
+	ID        string  `json:"id"`
 	Date      string  `json:"date"`
 	Time      string  `json:"time"`
 	Publisher *string `json:"publisher,omitempty"`

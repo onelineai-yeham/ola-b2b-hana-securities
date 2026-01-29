@@ -7,7 +7,7 @@ CREATE SCHEMA IF NOT EXISTS gold;
 -- Unified Translated News Table
 -- Combines JP Minkabu and CN Wind news into a single table
 CREATE TABLE IF NOT EXISTS gold.translated_news (
-    id                  BIGSERIAL PRIMARY KEY,
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Source identification
     source              VARCHAR(20) NOT NULL,      -- 'jp_minkabu' | 'cn_wind'

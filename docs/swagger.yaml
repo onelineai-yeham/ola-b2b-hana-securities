@@ -2,6 +2,9 @@ basePath: /
 definitions:
   model.NewsListItem:
     properties:
+      id:
+        type: string
+        description: UUID of the news item
       content:
         type: string
       date:
@@ -30,6 +33,42 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  model.NewsDetail:
+    properties:
+      id:
+        type: string
+        description: UUID of the news
+      source:
+        type: string
+        description: News source (jp_minkabu or cn_wind)
+      original_headline:
+        type: string
+      original_content:
+        type: string
+      translated_headline:
+        type: string
+      translated_content:
+        type: string
+      tickers:
+        type: array
+        items:
+          type: string
+      topics:
+        type: array
+        items:
+          type: string
+      keywords:
+        type: array
+        items:
+          type: string
+      published_at:
+        type: string
+        format: date-time
+      provider:
+        type: string
+      model_name:
+        type: string
     type: object
 info:
   contact:
@@ -115,6 +154,45 @@ paths:
               type: string
             type: object
       summary: List news
+      tags:
+      - news
+  /v1/news/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed news article by UUID
+      parameters:
+      - description: News UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NewsDetail'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get news detail
       tags:
       - news
 schemes:
