@@ -2,13 +2,16 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/onelineai/hana-news-api/internal/db"
@@ -16,7 +19,6 @@ import (
 	"github.com/onelineai/hana-news-api/internal/service"
 )
 
-// Handler handles HTTP requests
 type Handler struct {
 	newsService *service.NewsService
 	db          *db.DB
@@ -31,18 +33,23 @@ func New(newsService *service.NewsService, db *db.DB, logger *slog.Logger) *Hand
 	}
 }
 
-// Router returns the HTTP router
 func (h *Handler) Router() http.Handler {
 	r := chi.NewRouter()
 
-	// Middleware
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
 
-	// Swagger docs
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/index.html", http.StatusMovedPermanently)
 	})
@@ -50,13 +57,11 @@ func (h *Handler) Router() http.Handler {
 		httpSwagger.URL("/docs/doc.json"),
 	))
 
-	// Health check
 	r.Get("/health", h.healthCheck)
 
-	// API v1
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/news", h.listNews)
-		r.Get("/news/{id}", h.getNewsDetail)
+		r.Get("/news/{country}", h.listNewsByCountry)
+		r.Get("/news/{country}/{exchange}", h.listNewsByCountryExchange)
 	})
 
 	return r
@@ -79,13 +84,13 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// listNews godoc
-// @Summary      List news
-// @Description  Get paginated list of translated news articles
+// listNewsByCountry godoc
+// @Summary      List news by country
+// @Description  Get paginated list of translated news articles for a specific country
 // @Tags         news
 // @Accept       json
 // @Produce      json
-// @Param        source  query     string  false  "News source filter (jp_minkabu or cn_wind)"
+// @Param        country path      string  true   "Country code (JP or CN)"
 // @Param        ticker  query     string  false  "Filter by ticker/stock code"
 // @Param        from    query     string  false  "Start time (RFC3339 format)"
 // @Param        to      query     string  false  "End time (RFC3339 format)"
@@ -94,105 +99,113 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 // @Success      200     {object}  model.NewsListResponse
 // @Failure      400     {object}  map[string]string
 // @Failure      500     {object}  map[string]string
-// @Router       /v1/news [get]
-func (h *Handler) listNews(w http.ResponseWriter, r *http.Request) {
-	filter := model.NewsFilter{
-		Page:  1,
-		Limit: 20,
+// @Router       /v1/news/{country} [get]
+func (h *Handler) listNewsByCountry(w http.ResponseWriter, r *http.Request) {
+	country := strings.ToUpper(chi.URLParam(r, "country"))
+
+	c := model.CountryCode(country)
+	if c != model.CountryJP && c != model.CountryCN {
+		h.respondError(w, http.StatusBadRequest, "invalid country, must be 'JP' or 'CN'")
+		return
 	}
 
-	// Parse query params
-	if source := r.URL.Query().Get("source"); source != "" {
-		s := model.NewsSource(source)
-		if s != model.SourceJPMinkabu && s != model.SourceCNWind {
-			h.respondError(w, http.StatusBadRequest, "invalid source, must be 'jp_minkabu' or 'cn_wind'")
-			return
-		}
-		filter.Source = &s
-	}
+	filter := h.parseCommonFilters(r)
+	source := c.ToNewsSource()
+	filter.Source = &source
 
 	if ticker := r.URL.Query().Get("ticker"); ticker != "" {
 		filter.Ticker = &ticker
 	}
 
+	h.executeListNews(w, r, filter)
+}
+
+// listNewsByCountryExchange godoc
+// @Summary      List news by country and exchange
+// @Description  Get paginated list of translated news articles for a specific country and exchange
+// @Tags         news
+// @Accept       json
+// @Produce      json
+// @Param        country  path      string  true   "Country code (CN)"
+// @Param        exchange path      string  true   "Exchange code (HK, SH, SZ, BJ)"
+// @Param        ticker   query     string  false  "Filter by ticker code (without exchange suffix)"
+// @Param        from     query     string  false  "Start time (RFC3339 format)"
+// @Param        to       query     string  false  "End time (RFC3339 format)"
+// @Param        page     query     int     false  "Page number (default: 1)"
+// @Param        limit    query     int     false  "Items per page (default: 20, max: 100)"
+// @Success      200      {object}  model.NewsListResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /v1/news/{country}/{exchange} [get]
+func (h *Handler) listNewsByCountryExchange(w http.ResponseWriter, r *http.Request) {
+	country := strings.ToUpper(chi.URLParam(r, "country"))
+	exchange := strings.ToUpper(chi.URLParam(r, "exchange"))
+
+	if country != "CN" {
+		h.respondError(w, http.StatusBadRequest, "exchange filter only supported for CN")
+		return
+	}
+
+	validExchanges := map[string]bool{"HK": true, "SH": true, "SZ": true, "BJ": true}
+	if !validExchanges[exchange] {
+		h.respondError(w, http.StatusBadRequest, "invalid exchange, must be 'HK', 'SH', 'SZ', or 'BJ'")
+		return
+	}
+
+	filter := h.parseCommonFilters(r)
+	source := model.SourceCNWind
+	filter.Source = &source
+	filter.Exchange = &exchange
+
+	if ticker := r.URL.Query().Get("ticker"); ticker != "" {
+		fullTicker := fmt.Sprintf("%s.%s", ticker, exchange)
+		filter.Ticker = &fullTicker
+	}
+
+	h.executeListNews(w, r, filter)
+}
+
+func (h *Handler) parseCommonFilters(r *http.Request) model.NewsFilter {
+	filter := model.NewsFilter{
+		Page:  1,
+		Limit: 20,
+	}
+
 	if from := r.URL.Query().Get("from"); from != "" {
-		t, err := time.Parse(time.RFC3339, from)
-		if err != nil {
-			h.respondError(w, http.StatusBadRequest, "invalid 'from' format, use RFC3339")
-			return
+		if t, err := time.Parse(time.RFC3339, from); err == nil {
+			filter.From = &t
 		}
-		filter.From = &t
 	}
 
 	if to := r.URL.Query().Get("to"); to != "" {
-		t, err := time.Parse(time.RFC3339, to)
-		if err != nil {
-			h.respondError(w, http.StatusBadRequest, "invalid 'to' format, use RFC3339")
-			return
+		if t, err := time.Parse(time.RFC3339, to); err == nil {
+			filter.To = &t
 		}
-		filter.To = &t
 	}
 
 	if page := r.URL.Query().Get("page"); page != "" {
-		p, err := strconv.Atoi(page)
-		if err != nil || p < 1 {
-			h.respondError(w, http.StatusBadRequest, "invalid 'page' parameter")
-			return
+		if p, err := strconv.Atoi(page); err == nil && p > 0 {
+			filter.Page = p
 		}
-		filter.Page = p
 	}
 
 	if limit := r.URL.Query().Get("limit"); limit != "" {
-		l, err := strconv.Atoi(limit)
-		if err != nil || l < 1 || l > 100 {
-			h.respondError(w, http.StatusBadRequest, "invalid 'limit' parameter (1-100)")
-			return
+		if l, err := strconv.Atoi(limit); err == nil && l > 0 && l <= 100 {
+			filter.Limit = l
 		}
-		filter.Limit = l
 	}
 
+	return filter
+}
+
+func (h *Handler) executeListNews(w http.ResponseWriter, r *http.Request, filter model.NewsFilter) {
 	resp, err := h.newsService.ListNews(r.Context(), filter)
 	if err != nil {
 		h.logger.Error("failed to list news", "error", err)
 		h.respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
-
 	h.respondJSON(w, http.StatusOK, resp)
-}
-
-// getNewsDetail godoc
-// @Summary      Get news detail
-// @Description  Get detailed information of a specific news article
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string  true  "News ID (e.g., jp_minkabu_12345 or cn_wind_abc123)"
-// @Success      200  {object}  model.NewsDetail
-// @Failure      400  {object}  map[string]string
-// @Failure      404  {object}  map[string]string
-// @Failure      500  {object}  map[string]string
-// @Router       /v1/news/{id} [get]
-func (h *Handler) getNewsDetail(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		h.respondError(w, http.StatusBadRequest, "missing news id")
-		return
-	}
-
-	detail, err := h.newsService.GetNewsDetail(r.Context(), id)
-	if err != nil {
-		h.logger.Error("failed to get news detail", "id", id, "error", err)
-		h.respondError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-
-	if detail == nil {
-		h.respondError(w, http.StatusNotFound, "news not found")
-		return
-	}
-
-	h.respondJSON(w, http.StatusOK, detail)
 }
 
 func (h *Handler) respondJSON(w http.ResponseWriter, status int, data interface{}) {

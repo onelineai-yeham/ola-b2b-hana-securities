@@ -102,6 +102,10 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 		argIdx++
 	}
 
+	if filter.Exchange != nil {
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(tickers) t WHERE t LIKE '%%.%s')", *filter.Exchange))
+	}
+
 	if filter.Ticker != nil {
 		conditions = append(conditions, fmt.Sprintf("$%d = ANY(tickers)", argIdx))
 		args = append(args, *filter.Ticker)
@@ -136,7 +140,7 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 	offset := (filter.Page - 1) * filter.Limit
 	dataArgs := append(args, filter.Limit, offset)
 	dataQuery := fmt.Sprintf(`
-		SELECT source, source_news_id, translated_headline, tickers, topics, published_at
+		SELECT translated_headline, translated_content, published_at, provider
 		FROM gold.translated_news
 		%s
 		ORDER BY published_at DESC
@@ -151,15 +155,20 @@ func (r *GoldRepository) ListNews(ctx context.Context, filter model.NewsFilter) 
 
 	var items []model.NewsListItem
 	for rows.Next() {
-		var item model.NewsListItem
-		var source string
-		var sourceNewsID string
-		if err := rows.Scan(&source, &sourceNewsID, &item.Headline, &item.Tickers, &item.Topics, &item.PublishedAt); err != nil {
+		var headline string
+		var content *string
+		var publishedAt time.Time
+		var provider *string
+		if err := rows.Scan(&headline, &content, &publishedAt, &provider); err != nil {
 			return nil, 0, err
 		}
-		item.Source = model.NewsSource(source)
-		item.ID = fmt.Sprintf("%s_%s", source, sourceNewsID)
-		items = append(items, item)
+		items = append(items, model.NewsListItem{
+			Date:      publishedAt.Format("2006.01.02"),
+			Time:      publishedAt.Format("15:04"),
+			Publisher: provider,
+			Headline:  headline,
+			Content:   content,
+		})
 	}
 
 	return items, total, rows.Err()

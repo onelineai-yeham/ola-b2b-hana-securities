@@ -31,7 +31,7 @@ import (
 // @license.name  Proprietary
 // @license.url   https://onelineai.com
 
-// @host      localhost:8080
+// @host
 // @BasePath  /
 
 // @schemes http https

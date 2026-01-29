@@ -1,56 +1,17 @@
 basePath: /
 definitions:
-  model.NewsDetail:
-    properties:
-      id:
-        type: string
-      keywords:
-        items:
-          type: string
-        type: array
-      model_name:
-        type: string
-      original_content:
-        type: string
-      original_headline:
-        type: string
-      provider:
-        type: string
-      published_at:
-        type: string
-      source:
-        $ref: '#/definitions/model.NewsSource'
-      tickers:
-        items:
-          type: string
-        type: array
-      topics:
-        items:
-          type: string
-        type: array
-      translated_content:
-        type: string
-      translated_headline:
-        type: string
-    type: object
   model.NewsListItem:
     properties:
+      content:
+        type: string
+      date:
+        type: string
       headline:
         type: string
-      id:
+      publisher:
         type: string
-      published_at:
+      time:
         type: string
-      source:
-        $ref: '#/definitions/model.NewsSource'
-      tickers:
-        items:
-          type: string
-        type: array
-      topics:
-        items:
-          type: string
-        type: array
     type: object
   model.NewsListResponse:
     properties:
@@ -61,14 +22,6 @@ definitions:
       pagination:
         $ref: '#/definitions/model.Pagination'
     type: object
-  model.NewsSource:
-    enum:
-    - jp_minkabu
-    - cn_wind
-    type: string
-    x-enum-varnames:
-    - SourceJPMinkabu
-    - SourceCNWind
   model.Pagination:
     properties:
       limit:
@@ -78,7 +31,6 @@ definitions:
       total:
         type: integer
     type: object
-host: localhost:8080
 info:
   contact:
     email: support@onelineai.com
@@ -113,15 +65,16 @@ paths:
       summary: Health check
       tags:
       - health
-  /v1/news:
+  /v1/news/{country}:
     get:
       consumes:
       - application/json
-      description: Get paginated list of translated news articles
+      description: Get paginated list of translated news articles for a specific country
       parameters:
-      - description: News source filter (jp_minkabu or cn_wind)
-        in: query
-        name: source
+      - description: Country code (JP or CN)
+        in: path
+        name: country
+        required: true
         type: string
       - description: Filter by ticker/stock code
         in: query
@@ -162,35 +115,55 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: List news
+      summary: List news by country
       tags:
       - news
-  /v1/news/{id}:
+  /v1/news/{country}/{exchange}:
     get:
       consumes:
       - application/json
-      description: Get detailed information of a specific news article
+      description: Get paginated list of translated news articles for a specific country
+        and exchange
       parameters:
-      - description: News ID (e.g., jp_minkabu_12345 or cn_wind_abc123)
+      - description: Country code (CN)
         in: path
-        name: id
+        name: country
         required: true
         type: string
+      - description: Exchange code (HK, SH, SZ, BJ)
+        in: path
+        name: exchange
+        required: true
+        type: string
+      - description: Filter by ticker code (without exchange suffix)
+        in: query
+        name: ticker
+        type: string
+      - description: Start time (RFC3339 format)
+        in: query
+        name: from
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: to
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.NewsDetail'
+            $ref: '#/definitions/model.NewsListResponse'
         "400":
           description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -201,7 +174,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get news detail
+      summary: List news by country and exchange
       tags:
       - news
 schemes:

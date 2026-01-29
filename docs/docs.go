@@ -54,9 +54,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/news": {
+        "/v1/news/{country}": {
             "get": {
-                "description": "Get paginated list of translated news articles",
+                "description": "Get paginated list of translated news articles for a specific country",
                 "consumes": [
                     "application/json"
                 ],
@@ -66,13 +66,14 @@ const docTemplate = `{
                 "tags": [
                     "news"
                 ],
-                "summary": "List news",
+                "summary": "List news by country",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "News source filter (jp_minkabu or cn_wind)",
-                        "name": "source",
-                        "in": "query"
+                        "description": "Country code (JP or CN)",
+                        "name": "country",
+                        "in": "path",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -133,9 +134,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/news/{id}": {
+        "/v1/news/{country}/{exchange}": {
             "get": {
-                "description": "Get detailed information of a specific news article",
+                "description": "Get paginated list of translated news articles for a specific country and exchange",
                 "consumes": [
                     "application/json"
                 ],
@@ -145,34 +146,62 @@ const docTemplate = `{
                 "tags": [
                     "news"
                 ],
-                "summary": "Get news detail",
+                "summary": "List news by country and exchange",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "News ID (e.g., jp_minkabu_12345 or cn_wind_abc123)",
-                        "name": "id",
+                        "description": "Country code (CN)",
+                        "name": "country",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exchange code (HK, SH, SZ, BJ)",
+                        "name": "exchange",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by ticker code (without exchange suffix)",
+                        "name": "ticker",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339 format)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339 format)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.NewsDetail"
+                            "$ref": "#/definitions/model.NewsListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -194,82 +223,23 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "model.NewsDetail": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "keywords": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "model_name": {
-                    "type": "string"
-                },
-                "original_content": {
-                    "type": "string"
-                },
-                "original_headline": {
-                    "type": "string"
-                },
-                "provider": {
-                    "type": "string"
-                },
-                "published_at": {
-                    "type": "string"
-                },
-                "source": {
-                    "$ref": "#/definitions/model.NewsSource"
-                },
-                "tickers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "topics": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "translated_content": {
-                    "type": "string"
-                },
-                "translated_headline": {
-                    "type": "string"
-                }
-            }
-        },
         "model.NewsListItem": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
                 "headline": {
                     "type": "string"
                 },
-                "id": {
+                "publisher": {
                     "type": "string"
                 },
-                "published_at": {
+                "time": {
                     "type": "string"
-                },
-                "source": {
-                    "$ref": "#/definitions/model.NewsSource"
-                },
-                "tickers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "topics": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -286,17 +256,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.Pagination"
                 }
             }
-        },
-        "model.NewsSource": {
-            "type": "string",
-            "enum": [
-                "jp_minkabu",
-                "cn_wind"
-            ],
-            "x-enum-varnames": [
-                "SourceJPMinkabu",
-                "SourceCNWind"
-            ]
         },
         "model.Pagination": {
             "type": "object",
@@ -318,7 +277,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{"http", "https"},
 	Title:            "Hana Securities News API",

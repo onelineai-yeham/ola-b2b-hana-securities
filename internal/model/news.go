@@ -2,13 +2,33 @@ package model
 
 import "time"
 
-// NewsSource represents the source of the news
+// NewsSource represents the source of the news (internal)
 type NewsSource string
 
 const (
 	SourceJPMinkabu NewsSource = "jp_minkabu"
 	SourceCNWind    NewsSource = "cn_wind"
 )
+
+// CountryCode represents the country code for API filtering
+type CountryCode string
+
+const (
+	CountryJP CountryCode = "JP"
+	CountryCN CountryCode = "CN"
+)
+
+// ToNewsSource converts country code to internal news source
+func (c CountryCode) ToNewsSource() NewsSource {
+	switch c {
+	case CountryJP:
+		return SourceJPMinkabu
+	case CountryCN:
+		return SourceCNWind
+	default:
+		return ""
+	}
+}
 
 // TranslatedNews represents a unified translated news record (Gold schema)
 type TranslatedNews struct {
@@ -111,12 +131,11 @@ func (n *CNWindNews) ToTranslatedNews() *TranslatedNews {
 
 // NewsListItem is a unified news item for API response
 type NewsListItem struct {
-	ID          string     `json:"id"`
-	Source      NewsSource `json:"source"`
-	Headline    string     `json:"headline"`
-	Tickers     []string   `json:"tickers"`
-	Topics      []string   `json:"topics,omitempty"`
-	PublishedAt time.Time  `json:"published_at"`
+	Date      string  `json:"date"`
+	Time      string  `json:"time"`
+	Publisher *string `json:"publisher,omitempty"`
+	Headline  string  `json:"headline"`
+	Content   *string `json:"content,omitempty"`
 }
 
 // NewsDetail is a unified detailed news for API response
@@ -137,12 +156,13 @@ type NewsDetail struct {
 
 // NewsFilter represents query parameters for news listing
 type NewsFilter struct {
-	Source *NewsSource
-	Ticker *string
-	From   *time.Time
-	To     *time.Time
-	Page   int
-	Limit  int
+	Source   *NewsSource
+	Exchange *string // Exchange suffix for CN news: "HK", "SH", "SZ", "BJ"
+	Ticker   *string
+	From     *time.Time
+	To       *time.Time
+	Page     int
+	Limit    int
 }
 
 // Pagination represents pagination info in response
