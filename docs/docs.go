@@ -109,7 +109,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.NewsListResponse"
+                            "$ref": "#/definitions/github_com_onelineai_hana-news-api_internal_model.NewsListResponse"
                         }
                     },
                     "400": {
@@ -132,10 +132,119 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/news/{id}": {
+            "get": {
+                "description": "Get detailed news article by UUID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "news"
+                ],
+                "summary": "Get news detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "News UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_onelineai_hana-news-api_internal_model.NewsDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "model.NewsListItem": {
+        "github_com_onelineai_hana-news-api_internal_model.NewsDetail": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "model_name": {
+                    "type": "string"
+                },
+                "original_content": {
+                    "type": "string"
+                },
+                "original_headline": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "source": {
+                    "$ref": "#/definitions/github_com_onelineai_hana-news-api_internal_model.NewsSource"
+                },
+                "tickers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "translated_content": {
+                    "type": "string"
+                },
+                "translated_headline": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_onelineai_hana-news-api_internal_model.NewsListItem": {
             "type": "object",
             "properties": {
                 "content": {
@@ -147,6 +256,9 @@ const docTemplate = `{
                 "headline": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "publisher": {
                     "type": "string"
                 },
@@ -155,21 +267,32 @@ const docTemplate = `{
                 }
             }
         },
-        "model.NewsListResponse": {
+        "github_com_onelineai_hana-news-api_internal_model.NewsListResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.NewsListItem"
+                        "$ref": "#/definitions/github_com_onelineai_hana-news-api_internal_model.NewsListItem"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/model.Pagination"
+                    "$ref": "#/definitions/github_com_onelineai_hana-news-api_internal_model.Pagination"
                 }
             }
         },
-        "model.Pagination": {
+        "github_com_onelineai_hana-news-api_internal_model.NewsSource": {
+            "type": "string",
+            "enum": [
+                "jp_minkabu",
+                "cn_wind"
+            ],
+            "x-enum-varnames": [
+                "SourceJPMinkabu",
+                "SourceCNWind"
+            ]
+        },
+        "github_com_onelineai_hana-news-api_internal_model.Pagination": {
             "type": "object",
             "properties": {
                 "limit": {

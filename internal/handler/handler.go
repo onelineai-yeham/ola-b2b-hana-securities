@@ -38,11 +38,11 @@ func (h *Handler) Router() http.Handler {
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"*"},
 		AllowCredentials: false,
-		MaxAge:           300,
+		MaxAge:           86400,
 	}))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
