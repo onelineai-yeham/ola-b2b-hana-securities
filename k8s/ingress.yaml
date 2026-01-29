@@ -1,0 +1,34 @@
+# ManagedCertificate for HTTPS
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: hana-securities-cert-2501290930
+  namespace: hana-securities
+spec:
+  # 주의: 해당 도메인의 A 레코드가 아래 kubernetes.io/ingress.global-static-ip-name 으로
+  # 정의된 정적 IP로 리졸브 되어야 이슈가 생기지 않습니다.
+  domains:
+    - api.hana-securities.onelineai.com
+---
+# Ingress for external access via GCE Load Balancer
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hana-securities-alb-2501290930
+  namespace: hana-securities
+  annotations:
+    kubernetes.io/ingress.allow-http: "true"
+    kubernetes.io/ingress.global-static-ip-name: "api-hana-securities-static-ip-2501290930"
+    networking.gke.io/managed-certificates: "hana-securities-cert-2501290930"
+spec:
+  rules:
+    - host: api.hana-securities.onelineai.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hana-news-api
+                port:
+                  number: 8080
